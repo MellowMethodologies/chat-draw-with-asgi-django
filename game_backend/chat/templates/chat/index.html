@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>Chat Rooms</title>
+    <style>
+        #chat-log {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="connection-status">Connecting...</div>
+    <div id="chat-log"></div>
+    <form action="" id="form">
+        <input type="text" id="message" />
+        <button type="submit">Send</button>
+    </form>
+    <script type="text/javascript">
+        let url = `ws://localhost:8000/ws/socket-server/)`
+        const chatSocket = new WebSocket(url)
+
+        chatSocket.onopen = function(e) {
+            document.getElementById('connection-status').textContent = 'Connected'
+        }
+
+        chatSocket.onmessage = function(e){
+            let data = JSON.parse(e.data)
+            if(data.type === 'chat'){
+                let chatLog = document.getElementById('chat-log')
+                chatLog.insertAdjacentHTML('beforeend', `<div><p>${data.message}</p></div>`)
+                scrollToBottom()
+            }
+        }
+
+        chatSocket.onerror = function(error) {
+            console.error('WebSocket Error: ', error)
+        }
+
+        chatSocket.onclose = function(e) {
+            document.getElementById('connection-status').textContent = 'Disconnected'
+        }
+
+        let form = document.getElementById("form")
+        form.addEventListener('submit', (e) => {
+            e.preventDefault()
+            let message = e.target.message.value
+            if (message) {
+                chatSocket.send(JSON.stringify({
+                    'message': message
+                }))
+                e.target.message.value = ''
+            }
+        })
+
+        function scrollToBottom() {
+            let chatLog = document.getElementById('chat-log')
+            chatLog.scrollTop = chatLog.scrollHeight
+        }
+    </script>
+</body>
+</html>
