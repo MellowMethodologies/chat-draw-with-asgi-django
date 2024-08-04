@@ -1,0 +1,31 @@
+.gameHead{
+    grid-area: header;
+}
+
+.gameBody{
+    grid-area: main;
+    display: flex;
+    justify-content:center;
+}
+
+.gamePage{
+    display: grid;
+
+    grid-template-areas:
+    'header'
+    'main';
+}
+
+.gameHead{
+    width: 100vw;
+    height: 8rem;
+    display: flex;
+    justify-content: space-around;
+    padding:15px 20px 0 0;
+}
+
+.gameBody{
+    background-color: royalblue ;
+    height: 90vh;
+    margin: 0;
+}

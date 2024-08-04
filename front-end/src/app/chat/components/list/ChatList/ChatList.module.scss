@@ -1,0 +1,88 @@
+.textDiv{
+    display: flex;
+    align-items:center;
+    justify-content: space-around;
+    gap:20px;
+    padding:20px;
+}
+
+.textField{
+    flex:1;
+    display: flex;
+    background-color: rgba( 17, 25, 40, 0.5);
+    gap:20px;
+    align-items: center;
+    border-radius: 5px;
+    max-width: 25rem;
+    height:36px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.4);
+    :local{
+        input{
+        border:none;
+        background-color: transparent;
+        outline: none;
+        color:white;
+        }
+        .searchIcon{
+            height:36px;
+            gap:10px;
+            padding-left: 10px;
+        }
+    }
+}
+
+.add {
+    background-color: rgba(17,25,40,0.5);
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.4);
+    padding:10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.friends{
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding:20px 20px 20px 20px;
+    gap:3px;
+    overflow: scroll;
+}
+
+.friend{
+    display: flex;
+    padding: 20px;
+    background-color: rgba(17,25,40,0.5);
+    width: 95%;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+    .lastMessage{
+        font-size: 18px;
+    }
+    :local{
+        img{
+            border-radius: 50%;
+        }
+    }
+}
+
+.userName{
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.nameChat{
+    display: flex;
+    flex-direction: column;
+}
+
+.lastMessage{
+    font-weight: bold;
+}
+
+.userInfo{
+    display: flex;
+    gap:20px;
+    
+}
