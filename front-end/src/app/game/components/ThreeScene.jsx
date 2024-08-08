@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useRef,useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import Plane from './plane.jsx'
@@ -32,8 +32,6 @@ const ResponsiveCamera = () => {
 
 const ThreeScene = () => {
   const [score, setScore] = useState({ player1: 0, player2: 0 });
-  const [paddle1Pos, setPaddle1Pos] = useState([0, 0, (planeH / 2 ) - 0.1]);
-  const [paddle2Pos, setPaddle2Pos] = useState([0, 0, -(planeH / 2) + 0.1]);
   const [windowSize, setWindowSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
@@ -44,11 +42,11 @@ const ThreeScene = () => {
   useEffect(()=>{
     socketRef.current = new WebSocket('ws://localhost:8000/ws/game/');
 
-    sockerRef.current.onopen = () => {
-      console.log('WebSocker connected');
+    socketRef.current.onopen = () => {
+      console.log('WebSoket connected');
     };
 
-    sockerRef.current.onmessage = (event) =>{
+    socketRef.current.onmessage = (event) =>{
       const data  = JSON.parse(event.data);
       handleGameUpdate(data);
     };
@@ -58,8 +56,8 @@ const ThreeScene = () => {
     };
 
     return () =>{
-      if(sockerRef.current){
-        sockerRef.current.close();
+      if(socketRef.current){
+        socketRef.current.close();
       }
     };
 
@@ -69,7 +67,7 @@ const ThreeScene = () => {
     switch(data.type) {
       case 'paddle_move':
         if(data.player == 'player1')
-          setPaddle1Pos(data.paddlePos);
+           (data.paddlePos);
         else if(data.player == 'player2')
           setPaddle2Pos(data.paddlePos);
         break;
@@ -139,24 +137,9 @@ const ThreeScene = () => {
       }
     };
 
-    const animate = () => {
-      setPaddle1Pos(prev => [
-        Math.max(Math.min(prev[0] + paddle1Direction * 0.5, 4), -4),
-        prev[1],
-        prev[2]
-      ]);
-      setPaddle2Pos(prev => [
-        Math.max(Math.min(prev[0] + paddle2Direction * 0.5, 4), -4),
-        prev[1],
-        prev[2]
-      ]);
-      requestAnimationFrame(animate);
-    };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    animate();
-
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -181,14 +164,10 @@ const ThreeScene = () => {
         <ambientLight intensity={0.4} />
         <Plane />
         <SuperBall
-          paddlePositions={[
-            {x: paddle1Pos[0], y: paddle1Pos[1], z: paddle1Pos[2]},
-            {x: paddle2Pos[0], y: paddle2Pos[1], z: paddle2Pos[2]}
-          ]}
           onScoreUpdate={handleScoreUpdate}
         />
-        <Paddle position={paddle1Pos} />
-        <Paddle position={paddle2Pos} />
+        <Paddle position={[0,0,7.4]} />
+        <Paddle position={[0,0,-7.4]} />
       </Canvas>
     </div>
   );
