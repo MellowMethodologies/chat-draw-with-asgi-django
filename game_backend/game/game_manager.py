@@ -71,7 +71,6 @@ class GameManager:
 
     def update_game_state(self, delta_time):
         self.update_ball_position(delta_time)
-        # Other game logic updates
 
         # Check for a winner
         if self.score["player1"] >= self.win_score:

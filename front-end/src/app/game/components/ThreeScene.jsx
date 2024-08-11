@@ -3,7 +3,7 @@ import React, { useRef,useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import Plane from './plane.jsx'
-import SuperBall from './SuperBall.jsx'
+import { Sphere } from 'three';
 import Background from 'three/examples/jsm/renderers/common/Background.js';
 
 const planeH = 15;
@@ -37,6 +37,7 @@ const ThreeScene = () => {
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
   });
   const socketRef = useRef(null);
+  const ballRef = useRef();
 
   //backend
   useEffect(()=>{
@@ -46,9 +47,17 @@ const ThreeScene = () => {
       console.log('WebSoket connected');
     };
 
-    socketRef.current.onmessage = (event) =>{
-      const data  = JSON.parse(event.data);
-      handleGameUpdate(data);
+    socketRef.current.onmessage = (event) => {
+      if (event.data) {
+        try {
+          const data = JSON.parse(event.data);
+          handleGameUpdate(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      } else {
+        console.warn('Received empty WebSocket message');
+      }
     };
 
     socketRef.current.onclose = () => {
@@ -67,11 +76,24 @@ const ThreeScene = () => {
     switch(data.type) {
       case 'paddle_move':
         if(data.player == 'player1')
-           (data.paddlePos);
+          setPaddle2Pos(data.paddlePos);
         else if(data.player == 'player2')
           setPaddle2Pos(data.paddlePos);
         break;
       case 'ball_move':
+        const ballRef = useRef();
+ 
+        useFrame(() => {
+            //backend
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+              socketRef.current.send(JSON.stringify({
+                type: 'ball_move',
+                position: ballRef.current.position
+              }));
+            }    
+            // Update position
+            ballRef.current.position.set(data.new_x, data.radius, data.new_z);
+        });
         break;
       case 'score_update':
         setScore(data.score);
@@ -157,15 +179,20 @@ const ThreeScene = () => {
       <Canvas camera={{ fov: 45, position: [0, -20, -10] }}>
         <ResponsiveCamera />
         <OrbitControls
-          enableZoom={false}
+          enableZoomv={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 6}
         />
         <ambientLight intensity={0.4} />
         <Plane />
-        <SuperBall
-          onScoreUpdate={handleScoreUpdate}
-        />
+        <mesh ref={ballRef} position={[0, 0.2, 0]} args={[0.2, 32, 32]}>
+          <meshPhysicalMaterial
+            color="white"
+            roughness={0.1}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+          />
+        </mesh>
         <Paddle position={[0,0,7.4]} />
         <Paddle position={[0,0,-7.4]} />
       </Canvas>
