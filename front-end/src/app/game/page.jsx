@@ -5,7 +5,7 @@ import Image from 'next/image.js'
 import style from './game.module.css'
 import WebSocketTest from './components/testBack.jsx';
 import { div } from 'three/examples/jsm/nodes/Nodes.js'
-
+import Chat from './components/Chat.jsx'
 
 
 function PlayerInfo({source, playerName, playerScore, direction}) {
@@ -38,15 +38,15 @@ function PlayerInfo({source, playerName, playerScore, direction}) {
 
 function page() {
   return (
-    <div className={style.gamePage}>
-        <Head />
-        <div className={style.gameBody}>
-           <ThreeScene />
-        </div>
-      </div>
-    // <div>
-    //   <WebSocketTest />
-    // </div>
+    // <div className={style.gamePage}>
+    //     <Head />
+    //     <div className={style.gameBody}>
+    //        <ThreeScene />
+    //     </div>
+    //   </div>
+    <div>
+      <Chat />
+    </div>
   )
 }
 

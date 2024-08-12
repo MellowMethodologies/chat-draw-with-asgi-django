@@ -15,6 +15,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             print(f"Player {player} connected")
         # Start the game if there are two players connected
         await self.accept()
+        self.send(text_data=json.dumps({"type": "connection_established"}))
         if len(self.connected_players) == 2:
             print("--------\n Starting the game \n--------")
             await self.channel_layer.group_add(self.game_group_name, self.channel_name)

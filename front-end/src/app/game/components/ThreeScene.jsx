@@ -1,18 +1,17 @@
 'use client'
-import React, { useRef,useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import Plane from './plane.jsx'
 import { Sphere } from 'three';
-import Background from 'three/examples/jsm/renderers/common/Background.js';
 
 const planeH = 15;
 const planeW = 10;
 const planeX = 0;
 
-const Paddle = React.memo(({position}) => {
+const Paddle = React.memo(({ position, paddleRef }) => {
   return (
-    <mesh position={position}>
+    <mesh position={position} ref={paddleRef}>
       <boxGeometry args={[2, 0.2, 0.2]} />
       <meshPhongMaterial color="white" />
     </mesh>
@@ -30,6 +29,29 @@ const ResponsiveCamera = () => {
   return null
 }
 
+const Ball = ({ socketRef, ballRef }) => {
+  useFrame(() => {
+    if (ballRef.current && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: 'ball_move',
+        position: ballRef.current.position.toArray()
+      }));
+    }
+  });
+
+  return (
+    <mesh ref={ballRef} position={[0, 0.2, 0]}>
+      <sphereGeometry args={[0.2, 32, 32]} />
+      <meshPhysicalMaterial
+        color="white"
+        roughness={0.1}
+        clearcoat={1}
+        clearcoatRoughness={0.1}
+      />
+    </mesh>
+  );
+};
+
 const ThreeScene = () => {
   const [score, setScore] = useState({ player1: 0, player2: 0 });
   const [windowSize, setWindowSize] = useState({
@@ -38,13 +60,14 @@ const ThreeScene = () => {
   });
   const socketRef = useRef(null);
   const ballRef = useRef();
+  const paddle1Ref = useRef();
+  const paddle2Ref = useRef();
 
-  //backend
-  useEffect(()=>{
+  useEffect(() => {
     socketRef.current = new WebSocket('ws://localhost:8000/ws/game/');
 
     socketRef.current.onopen = () => {
-      console.log('WebSoket connected');
+      console.log('WebSocket connected');
     };
 
     socketRef.current.onmessage = (event) => {
@@ -61,39 +84,29 @@ const ThreeScene = () => {
     };
 
     socketRef.current.onclose = () => {
-      console.log('disconnect webs');
+      console.log('WebSocket disconnected');
     };
 
-    return () =>{
-      if(socketRef.current){
+    return () => {
+      if (socketRef.current) {
         socketRef.current.close();
       }
     };
-
   }, []);
 
   const handleGameUpdate = (data) => {
     switch(data.type) {
       case 'paddle_move':
-        if(data.player == 'player1')
-          setPaddle2Pos(data.paddlePos);
-        else if(data.player == 'player2')
-          setPaddle2Pos(data.paddlePos);
+        if (data.player === 'player1' && paddle1Ref.current) {
+          paddle1Ref.current.position.x = data.paddlePos;
+        } else if (data.player === 'player2' && paddle2Ref.current) {
+          paddle2Ref.current.position.x = data.paddlePos;
+        }
         break;
       case 'ball_move':
-        const ballRef = useRef();
- 
-        useFrame(() => {
-            //backend
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-              socketRef.current.send(JSON.stringify({
-                type: 'ball_move',
-                position: ballRef.current.position
-              }));
-            }    
-            // Update position
-            ballRef.current.position.set(data.new_x, data.radius, data.new_z);
-        });
+        if (ballRef.current) {
+          ballRef.current.position.set(data.new_x, data.radius, data.new_z);
+        }
         break;
       case 'score_update':
         setScore(data.score);
@@ -113,7 +126,6 @@ const ThreeScene = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  //backend 
   const handleScoreUpdate = useCallback((newScore) => {
     setScore(newScore);
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
@@ -124,50 +136,44 @@ const ThreeScene = () => {
     }
   }, []);
 
-
   useEffect(() => {
-    let paddle1Direction = 0;
-    let paddle2Direction = 0;
-
     const handleKeyDown = (event) => {
+      let paddleDirection = 0;
+      let player = '';
+
       switch (event.key) {
         case 'ArrowLeft':
-          paddle1Direction = 1;
+          paddleDirection = -1;
+          player = 'player1';
           break;
         case 'ArrowRight':
-          paddle1Direction = -1;
+          paddleDirection = 1;
+          player = 'player1';
           break;
         case 'a':
-          paddle2Direction = 1;
+          paddleDirection = -1;
+          player = 'player2';
           break;
         case 'd':
-          paddle2Direction = -1;
+          paddleDirection = 1;
+          player = 'player2';
           break;
       }
-    };
 
-    const handleKeyUp = (event) => {
-      switch (event.key) {
-        case 'ArrowLeft':
-        case 'ArrowRight':
-          paddle1Direction = 0;
-          break;
-        case 'a':
-        case 'd':
-          paddle2Direction = 0;
-          break;
+      if (paddleDirection !== 0 && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          type: 'paddle_move',
+          player: player,
+          direction: paddleDirection
+        }));
       }
     };
-
 
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
     };
   }, []);
-
 
   return (
     <div style={{ 
@@ -179,23 +185,19 @@ const ThreeScene = () => {
       <Canvas camera={{ fov: 45, position: [0, -20, -10] }}>
         <ResponsiveCamera />
         <OrbitControls
-          enableZoomv={false}
+          enableZoom={false}
           minPolarAngle={Math.PI / 6}
           maxPolarAngle={Math.PI / 6}
         />
         <ambientLight intensity={0.4} />
         <Plane />
-        <mesh ref={ballRef} position={[0, 0.2, 0]} args={[0.2, 32, 32]}>
-          <meshPhysicalMaterial
-            color="white"
-            roughness={0.1}
-            clearcoat={1}
-            clearcoatRoughness={0.1}
-          />
-        </mesh>
-        <Paddle position={[0,0,7.4]} />
-        <Paddle position={[0,0,-7.4]} />
+        <Ball socketRef={socketRef} ballRef={ballRef} />
+        <Paddle position={[0, 0, 7.4]} paddleRef={paddle1Ref} />
+        <Paddle position={[0, 0, -7.4]} paddleRef={paddle2Ref} />
       </Canvas>
+      <div style={{ position: 'absolute', top: '10px', left: '10px', color: 'white' }}>
+        Score: Player 1 - {score.player1}, Player 2 - {score.player2}
+      </div>
     </div>
   );
 };

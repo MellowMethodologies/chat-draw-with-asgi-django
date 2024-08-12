@@ -18,7 +18,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "game_backend.settings")
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-from game.routing import websocket_urlpatterns
+# from game.routing import websocket_urlpatterns
+from chat_app.routing import websocket_urlpatterns
+# from game.routing import websocket_urlpatterns
 
 application = ProtocolTypeRouter(
     {
