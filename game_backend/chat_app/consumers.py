@@ -2,6 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from .models import ChatMessage
+from django.utils import timezone
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -18,6 +19,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if message_type == 'message':
             message = text_data_json['message']
+            timestamp = timezone.now().isoformat()
             await self.save_message(username, message)
             await self.channel_layer.group_send(
                 "chat",
@@ -25,6 +27,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'type': 'chat_message',
                     'username': username,
                     'message': message,
+                    'timestamp': timestamp
                 }
             )
         elif message_type == 'username':
@@ -40,13 +43,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'message',
             'username': event['username'],
-            'content': event['message']
+            'content': event['message'],
+            'timestamp': event['timestamp']
         }))
 
     async def user_joined(self, event):
         await self.send(text_data=json.dumps({
             'type': 'notification',
-            'content': f"{event['username']} has joined the chat."
+            'content': f"{event['username']} has joined the chat.",
+            'timestamp': timezone.now().isoformat()
         }))
 
     @sync_to_async
