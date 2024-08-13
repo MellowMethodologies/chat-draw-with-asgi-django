@@ -1,31 +1,43 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react';
+// import './Chat.css'; // Assume we have a CSS file for styling
 
 function Chat() {
     const socketRef = useRef(null);
+    const usernameInputRef = useRef(null);
+    const messageInputRef = useRef(null);
+    const messagesEndRef = useRef(null);
+    const [username, setUsername] = useState('');
     const [messages, setMessages] = useState([]);
+    const [isUsernameSet, setIsUsernameSet] = useState(false);
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         socketRef.current = new WebSocket('ws://localhost:8000/ws/chat_app/');
 
         socketRef.current.onopen = () => {
             console.log('WebSocket connected');
+            setIsConnected(true);
+            setError(null);
         };
 
         socketRef.current.onclose = () => {
             console.log('WebSocket closed');
+            setIsConnected(false);
         };
 
         socketRef.current.onerror = (error) => {
             console.error('WebSocket error:', error);
+            setError('Failed to connect to chat server');
+            setIsConnected(false);
         };
 
         socketRef.current.onmessage = (event) => {
             if (event.data) {
                 try {
-                    console.log(event.data);
                     const data = JSON.parse(event.data);
-                    setMessages(prevMessages => [...prevMessages, data]);
+                    setMessages(prevMessages => [...prevMessages, {...data, timestamp: new Date()}]);
                 } catch (error) {
                     console.error('Error parsing WebSocket message:', error);
                 }
@@ -41,34 +53,83 @@ function Chat() {
         };
     }, []);
 
-    const handleSubmit = (e) => {
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleUsernameSubmit = (e) => {
         e.preventDefault();
-        const input = e.target.elements[0];
-        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        const newUsername = usernameInputRef.current?.value.trim();
+        if (newUsername) {
+            setUsername(newUsername);
+            setIsUsernameSet(true);
+            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                socketRef.current.send(JSON.stringify({
+                    type: 'username',
+                    username: newUsername,
+                }));
+            }
+        }
+    };
+
+    const handleMessageSubmit = (e) => {
+        e.preventDefault();
+        const message = messageInputRef.current?.value.trim();
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && message) {
             socketRef.current.send(JSON.stringify({
                 type: 'message',
-                message: input.value,
+                username: username,
+                message: message,
             }));
-            input.value = '';
+            messageInputRef.current.value = ''; // Clear the input
         } else {
-            console.error('WebSocket is not connected');
+            setError('Failed to send message. Please try again.');
         }
     };
 
     return (
-        <div className="container">
-            <div className="chat">
+        <div className="chat-container">
+            {error && <div className="error-message">{error}</div>}
+            <div className="chat-messages">
                 {messages.map((message, index) => (
                     <div key={index} className="message">
                         <span className="message-username">{message.username}</span>
                         <span className="message-content">{message.content}</span>
+                        <span className="message-timestamp">
+                            {message.timestamp.toLocaleTimeString()}
+                        </span>
                     </div>
                 ))}
+                <div ref={messagesEndRef} />
             </div>
-            <form className="chat-form" onSubmit={handleSubmit}>
-                <input type="text" placeholder="Enter your message..." />
-                <button type="submit">Send</button>
-            </form>
+            {!isUsernameSet ? (
+                <form onSubmit={handleUsernameSubmit} className="username-form">
+                    <input 
+                        ref={usernameInputRef} 
+                        type="text" 
+                        placeholder="Enter your username..." 
+                        required 
+                    />
+                    <button type="submit" disabled={!isConnected}>Set Username</button>
+                </form>
+            ) : (
+                <form onSubmit={handleMessageSubmit} className="message-form">
+                    <input 
+                        ref={messageInputRef} 
+                        type="text" 
+                        placeholder="Enter your message..." 
+                        required 
+                    />
+                    <button type="submit" disabled={!isConnected}>Send</button>
+                </form>
+            )}
+            <div className="connection-status">
+                {isConnected ? 'Connected' : 'Disconnected'}
+            </div>
         </div>
     );
 }

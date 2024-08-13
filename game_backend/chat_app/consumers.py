@@ -1,5 +1,7 @@
-from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+from asgiref.sync import sync_to_async
+from .models import ChatMessage
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -11,19 +13,42 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        message = text_data_json['message']
+        message_type = text_data_json['type']
+        username = text_data_json['username']
 
-        await self.channel_layer.group_send(
-            "chat",
-            {
-                'type': 'chat_message',
-                'message': message
-            }
-        )
+        if message_type == 'message':
+            message = text_data_json['message']
+            await self.save_message(username, message)
+            await self.channel_layer.group_send(
+                "chat",
+                {
+                    'type': 'chat_message',
+                    'username': username,
+                    'message': message,
+                }
+            )
+        elif message_type == 'username':
+            await self.channel_layer.group_send(
+                "chat",
+                {
+                    'type': 'user_joined',
+                    'username': username
+                }
+            )
 
     async def chat_message(self, event):
-        message = event['message']
-
         await self.send(text_data=json.dumps({
-            'message': message
+            'type': 'message',
+            'username': event['username'],
+            'content': event['message']
         }))
+
+    async def user_joined(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'notification',
+            'content': f"{event['username']} has joined the chat."
+        }))
+
+    @sync_to_async
+    def save_message(self, username, message):
+        ChatMessage.objects.create(username=username, content=message)
